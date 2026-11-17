@@ -1,0 +1,13 @@
+/target/
+/.cargo-home/
+/dist/
+/shots/
+/self-test*.json
+/assets/*
+!/assets/README.md
+__pycache__/
+*.pyc
+.env
+.env.*
+/vendor-miniquad/.cargo-ok
+/vendor-miniquad/ime_output.txt

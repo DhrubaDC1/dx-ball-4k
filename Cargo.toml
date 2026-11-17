@@ -1,0 +1,20 @@
+[package]
+name = "brick-breaker"
+version = "0.1.0"
+edition = "2021"
+description = "A 4K desktop brick breaker reconstruction with locally imported game assets"
+repository = "https://github.com/DhrubaDC1/dx-ball-4k"
+
+[dependencies]
+macroquad = { version = "0.4.14", features = ["audio"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[patch.crates-io]
+miniquad = { path = "vendor-miniquad" }

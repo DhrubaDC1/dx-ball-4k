@@ -1,0 +1,439 @@
+{
+  "version": 1,
+  "values": [
+    {
+      "name": "logical width",
+      "group": "arena",
+      "value": 640,
+      "unit": "px",
+      "source": "0x40f7a0"
+    },
+    {
+      "name": "logical height",
+      "group": "arena",
+      "value": 480,
+      "unit": "px",
+      "source": "0x40f7a0"
+    },
+    {
+      "name": "simulation rate",
+      "group": "timing",
+      "value": 60,
+      "unit": "Hz",
+      "source": "README.TXT Game concept; 0x40f8b0 frame update"
+    },
+    {
+      "name": "left wall",
+      "group": "arena",
+      "value": 20,
+      "unit": "px",
+      "source": "0x410770"
+    },
+    {
+      "name": "right wall",
+      "group": "arena",
+      "value": 619,
+      "unit": "px",
+      "source": "0x410770"
+    },
+    {
+      "name": "top wall",
+      "group": "arena",
+      "value": 0,
+      "unit": "px",
+      "source": "0x410770"
+    },
+    {
+      "name": "bottom loss line",
+      "group": "arena",
+      "value": 479,
+      "unit": "px",
+      "source": "0x410770"
+    },
+    {
+      "name": "columns",
+      "group": "boards",
+      "value": 20,
+      "source": "0x4119f0; 0x4116c0"
+    },
+    {
+      "name": "rows",
+      "group": "boards",
+      "value": 20,
+      "source": "0x4119f0; 0x4116c0"
+    },
+    {
+      "name": "brick width",
+      "group": "boards",
+      "value": 30,
+      "unit": "px",
+      "source": "0x4119f0; 0x4116c0"
+    },
+    {
+      "name": "brick height",
+      "group": "boards",
+      "value": 15,
+      "unit": "px",
+      "source": "0x4119f0; 0x4116c0"
+    },
+    {
+      "name": "brick origin x",
+      "group": "boards",
+      "value": 20,
+      "unit": "px",
+      "source": "0x4119f0; 0x4116c0"
+    },
+    {
+      "name": "brick origin y",
+      "group": "boards",
+      "value": 50,
+      "unit": "px",
+      "source": "0x4119f0; 0x4116c0"
+    },
+    {
+      "name": "board count",
+      "group": "boards",
+      "value": 50,
+      "unit": "boards",
+      "source": "DEFAULT.BDS = 20000 bytes; 0x40cc30; 0x415b30"
+    },
+    {
+      "name": "starting lives",
+      "group": "lives",
+      "value": 3,
+      "unit": "paddles",
+      "source": "0x40f4c0"
+    },
+    {
+      "name": "maximum lives",
+      "group": "lives",
+      "value": 20,
+      "unit": "paddles",
+      "source": "0x4158d0"
+    },
+    {
+      "name": "life loss",
+      "group": "lives",
+      "value": "Lose one paddle only when all balls are lost; reset bonuses and serve on the same board",
+      "source": "README.TXT; 0x410770; 0x415bb0; 0x415df0"
+    },
+    {
+      "name": "paddle y",
+      "group": "paddle",
+      "value": 450,
+      "unit": "px",
+      "source": "0x412df0"
+    },
+    {
+      "name": "paddle width",
+      "group": "paddle",
+      "value": 73,
+      "unit": "px",
+      "source": "MBALL2.SBK sprite 68; 0x415c40"
+    },
+    {
+      "name": "paddle rendered height",
+      "group": "paddle",
+      "value": 14,
+      "unit": "px",
+      "source": "MBALL2.SBK sprite 68"
+    },
+    {
+      "name": "paddle collision height",
+      "group": "paddle",
+      "value": 7,
+      "unit": "px",
+      "source": "0x410770"
+    },
+    {
+      "name": "paddle movement",
+      "group": "controls",
+      "value": "Mouse x follows immediately; center constrained to [21+width/2, 618-width/2]",
+      "source": "0x412df0"
+    },
+    {
+      "name": "launch and shoot",
+      "group": "controls",
+      "value": "Left mouse press (not hold)",
+      "source": "README.TXT; 0x40f8b0"
+    },
+    {
+      "name": "pause",
+      "group": "controls",
+      "value": "P or right mouse",
+      "estimated": true
+    },
+    {
+      "name": "extra controls",
+      "group": "controls",
+      "value": "Space launches, arrows/A/D move, Escape menu, F1 help, F2 editor, F11 fullscreen, M music, S sounds",
+      "estimated": true
+    },
+    {
+      "name": "keyboard paddle speed",
+      "group": "paddle",
+      "value": 480,
+      "unit": "px/s",
+      "estimated": true
+    },
+    {
+      "name": "normal ball size",
+      "group": "ball",
+      "value": 9,
+      "unit": "px",
+      "source": "MBALL2.SBK sprites 1 and 55"
+    },
+    {
+      "name": "small ball size",
+      "group": "ball",
+      "value": 5,
+      "unit": "px",
+      "source": "MBALL2.SBK sprites 1 and 55"
+    },
+    {
+      "name": "initial speed",
+      "group": "ball",
+      "value": 5,
+      "unit": "px/frame",
+      "source": "0x4105d0; 0x410770; 0x40f8b0"
+    },
+    {
+      "name": "slow speed",
+      "group": "ball",
+      "value": 4,
+      "unit": "px/frame",
+      "source": "0x4105d0; 0x410770; 0x40f8b0"
+    },
+    {
+      "name": "maximum speed",
+      "group": "ball",
+      "value": 9,
+      "unit": "px/frame",
+      "source": "0x4105d0; 0x410770; 0x40f8b0"
+    },
+    {
+      "name": "fast increment",
+      "group": "ball",
+      "value": 2,
+      "source": "0x4105d0; 0x410770; 0x40f8b0"
+    },
+    {
+      "name": "speed increase after bounce counter exceeds",
+      "group": "ball",
+      "value": 40,
+      "source": "0x4105d0; 0x410770; 0x40f8b0"
+    },
+    {
+      "name": "stuck counter threshold",
+      "group": "ball",
+      "value": 300,
+      "source": "0x4105d0; 0x410770; 0x40f8b0"
+    },
+    {
+      "name": "rebound zones",
+      "group": "ball",
+      "value": "0.07,0.20,0.35,0.50,0.65,0.80,0.93",
+      "source": "0x4200b8 (doubles); 0x411410"
+    },
+    {
+      "name": "rebound angles",
+      "group": "ball",
+      "value": "150,135,120,105,75,60,45,30",
+      "unit": "degrees",
+      "source": "0x411410"
+    },
+    {
+      "name": "rebound formula",
+      "group": "ball",
+      "value": "vx=trunc(trunc(cos(angle)*1024)/1024*speed*1.2), vy=trunc(-trunc(sin(angle)*1024)/1024*speed)",
+      "source": "0x402250; 0x402400; 0x402490; 0x411410 instructions; 0x4200f0=1.2"
+    },
+    {
+      "name": "ball normal acceleration",
+      "group": "ball",
+      "value": false,
+      "source": "0x410770; velocity changes only on rebounds and bonuses"
+    },
+    {
+      "name": "ball collision scoring",
+      "group": "score",
+      "value": "2 * current ball speed per successful brick hit",
+      "source": "0x4116c0"
+    },
+    {
+      "name": "bullet and chain scoring",
+      "group": "score",
+      "value": 4,
+      "unit": "points/hit",
+      "source": "0x413170; 0x40f8b0"
+    },
+    {
+      "name": "bonus catch scoring",
+      "group": "score",
+      "value": 100,
+      "unit": "points",
+      "source": "0x413e20"
+    },
+    {
+      "name": "score wrap",
+      "group": "score",
+      "value": 999999999,
+      "unit": "points",
+      "source": "0x415880"
+    },
+    {
+      "name": "indestructible brick",
+      "group": "bricks",
+      "value": 2,
+      "source": "0x411f40; excluded from completion in 0x415a90"
+    },
+    {
+      "name": "durable brick stages",
+      "group": "bricks",
+      "value": "3 -> 4 -> 5 -> empty (three hits); 7 -> 6 -> empty (invisible first); 21 -> 2 (one counted hit)",
+      "source": "0x411f40"
+    },
+    {
+      "name": "explosive brick",
+      "group": "bricks",
+      "value": 8,
+      "source": "0x411f40; 0x412730 spreads to eight neighbours and chains"
+    },
+    {
+      "name": "thru brick",
+      "group": "bonuses",
+      "value": "Destroys metal and durable bricks without bouncing; fireball turns struck cells into explosions",
+      "source": "0x4116c0; 0x411f40"
+    },
+    {
+      "name": "bonus chance",
+      "group": "bonuses",
+      "value": 0.2,
+      "unit": "per destroyed brick",
+      "source": "0x4138d0 random(10)<2, only if no bonus is active"
+    },
+    {
+      "name": "bonus gravity interval",
+      "group": "bonuses",
+      "value": 21,
+      "unit": "frames",
+      "source": "0x413e20 increases vy by 1 after counter >20"
+    },
+    {
+      "name": "bonus launch velocity",
+      "group": "bonuses",
+      "value": "vx = impacting ball vx, vy = impacting ball vy/2; reflected at sides and top",
+      "source": "0x40f8b0; 0x412ba0; 0x4138d0; 0x413e20"
+    },
+    {
+      "name": "bonus selection",
+      "group": "bonuses",
+      "value": "random(19); extra life and warp retained only on random(5)==1 otherwise kill; index14 becomes expand",
+      "source": "0x4138d0"
+    },
+    {
+      "name": "bonus types",
+      "group": "bonuses",
+      "value": "Extra life, warp, zap, slow, multiply exploding, thru brick, set off exploding, fireball, shooting, grab, expand, shrink, split, kill, fast, super shrink, falling bricks, shrink ball",
+      "source": "0x413e20; MAINMENU.PCX"
+    },
+    {
+      "name": "paddle expand limit",
+      "group": "bonuses",
+      "value": 292,
+      "unit": "px",
+      "source": "0x413e20: base width*4"
+    },
+    {
+      "name": "paddle minimum width",
+      "group": "bonuses",
+      "value": 36,
+      "unit": "px",
+      "source": "0x413e20: base width/2 integer"
+    },
+    {
+      "name": "bullet speed",
+      "group": "shooting",
+      "value": 8,
+      "unit": "px/frame",
+      "source": "0x413170"
+    },
+    {
+      "name": "bullets per press",
+      "group": "shooting",
+      "value": 2,
+      "unit": "bullets",
+      "source": "0x4132c0"
+    },
+    {
+      "name": "maximum bullets in flight",
+      "group": "shooting",
+      "value": 6,
+      "unit": "bullets",
+      "source": "0x40f8b0"
+    },
+    {
+      "name": "split",
+      "group": "bonuses",
+      "value": "Each current ball produces one mirrored horizontal-velocity copy",
+      "source": "0x414df0"
+    },
+    {
+      "name": "falling bricks",
+      "group": "bonuses",
+      "value": "On each paddle rebound, shift bricks one cell down where the next cell is empty; bottom row stays",
+      "source": "0x415670"
+    },
+    {
+      "name": "last brick lightning",
+      "group": "boards",
+      "value": "One remaining counted brick is automatically destroyed after 40000+random(20000) milliseconds",
+      "source": "0x415f40"
+    },
+    {
+      "name": "score position",
+      "group": "hud",
+      "value": "Large original bitmap numbers at upper left (30, approximately 0); reserve paddles at (598,2) stepping left 22 pixels",
+      "source": "0x4158d0; 0x404ee0"
+    },
+    {
+      "name": "board transition pause",
+      "group": "timing",
+      "value": 1.2,
+      "unit": "seconds",
+      "estimated": true
+    },
+    {
+      "name": "life loss pause",
+      "group": "timing",
+      "value": 1.2,
+      "unit": "seconds",
+      "estimated": true
+    },
+    {
+      "name": "explosion chain delay",
+      "group": "timing",
+      "value": 4,
+      "unit": "frames",
+      "source": "0x412730 (animation decrements to frame5, interval2); implementation uses equivalent short delayed chain"
+    },
+    {
+      "name": "particle approximation",
+      "group": "effects",
+      "value": "Original explosion frames; simplified debris paths and palette cycling",
+      "estimated": true
+    },
+    {
+      "name": "music instruments",
+      "group": "audio",
+      "value": "Original MIDI events with synthesized portable instruments; default music off during play",
+      "source": "README.TXT mentions optional in-game music; original MDS files"
+    },
+    {
+      "name": "modes",
+      "group": "modes",
+      "value": "Single-player 50-board campaign; bonus reference; high scores; local board editor",
+      "source": "README.TXT; 0x40c740; 0x40e430"
+    }
+  ]
+}
