@@ -1,5 +1,7 @@
 # Original files used locally
 
+The glass edition renders new procedural graphics and text in `src/visuals.rs` and `src/main.rs`. Original sprite banks, backgrounds and bitmap fonts remain in the local import inventory below for provenance but are no longer loaded or displayed. Original board data, sounds and optional music remain in use. DejaVu Sans regular and bold are bundled in `resources/fonts/` under their included [license](resources/fonts/LICENSE.txt); copyright belongs to their respective authors. All other new visual elements are procedural; no new dependencies were added.
+
 Original game by Michael P. Welch; graphics by Seumas McNally; boards credited to Sarah Welch. Original README identifies music and sounds as public domain. Imported assets and executables containing them are for private local use only; they are excluded from the public source repository. This credits list contains filenames, not the original files or personal installation paths. Vendored miniquad retains its MIT/Apache licenses in vendor-miniquad/.
 
 - `Dxball/MBBKGRND.PCX` — converted to PNG

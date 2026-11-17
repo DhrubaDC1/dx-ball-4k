@@ -13,8 +13,12 @@ if system=='macos':
 else:shutil.copy2(binary,stage/('brick-breaker'+ext))
 if system=='linux':
  launch=stage/'Play.sh';launch.write_text('#!/bin/sh\ncd -- "$(dirname -- "$0")"\nexec ./brick-breaker "$@"\n');launch.chmod(0o755)
+ shutil.copy2(root/'tools/install_linux.py',stage/'Install.py')
+ (stage/'resources').mkdir(exist_ok=True)
+ shutil.copy2(root/'resources/brick-breaker.svg',stage/'resources/brick-breaker.svg')
 for name in ['README.md','CREDITS.md','MECHANICS.md','mechanics.json']:shutil.copy2(root/name,stage/name)
 license_dir=stage/'licenses';license_dir.mkdir(exist_ok=True)
+shutil.copy2(root/'resources/fonts/LICENSE.txt',license_dir/'DejaVu-LICENSE.txt')
 for name in ['LICENSE-MIT','LICENSE-APACHE']:shutil.copy2(root/'vendor-miniquad'/name,license_dir/('miniquad-'+name))
 if system=='linux':
  archive=stage.with_suffix('.tar.gz')

@@ -8,7 +8,7 @@ A Rust + macroquad desktop reconstruction with a 4K interface, a 50-board campai
 
 This public repository contains the reconstruction source and import tools. Original game assets are **not distributed**: import them from your own DX-Ball installation for private local use. Local builds embed those assets; do not publish those binaries, asset files or gameplay screenshots. No original executable is launched or redistributed. See [CREDITS.md](CREDITS.md) for asset provenance and [MECHANICS.md](MECHANICS.md) for recovered rules and remaining differences.
 
-The game renders at 4K UHD (3840×2160, 16:9), including the playfield, modern dark frame and side panel for score, lives, board progress and controls. Interface text is rasterized at 4K for sharper edges; the original pixel artwork keeps its crisp retro style. It requests a 4K window and fits smaller desktops automatically. Resizing and F11 fullscreen fit the whole layout without cropping or stretching; the original playfield proportions and physics are preserved.
+The game renders at 4K UHD (3840×2160, 16:9), including the playfield, modern dark frame and side panel for score, lives, board progress and controls. Interface text and procedural materials are rasterized at 4K. The arcade styling replaces bitmap graphics with vivid jewel-colored bricks, restrained edge highlights and animated light patterns, a satin-metal paddle, a luminous ball, soft contact shadows and impact shards. Quiet navy interface panels, a subtle floor grid and colored light pools give the arena depth while keeping play readable. These are simulated screen-space lighting and environment reflections, not hardware ray tracing or physically accurate global illumination. See [VISUAL_ROADMAP.md](VISUAL_ROADMAP.md) for the phased modernization plan. It requests a 4K window and fits smaller desktops automatically. Resizing and F11 fullscreen fit the whole layout without cropping or stretching; the original playfield proportions and physics are preserved.
 
 ## Play
 
@@ -16,7 +16,7 @@ Move the mouse to steer. Left-click to launch a held ball or fire the shooting p
 
 - P or right-click: pause/resume.
 - Escape: menu/back; Escape again on the menu: exit.
-- F1: controls and the original bonus reference.
+- F1: controls and an icon guide matching the falling power-ups.
 - F2: board workshop. Paint with left-click, erase with right-click, choose a brick along the bottom, +/- changes boards, Backspace clears, S saves, L loads, Enter plays your board.
 - M: optional music; N: next track; S outside the editor: sound effects.
 - F11: fullscreen. Arrow keys or A/D also steer; Space also launches.
@@ -43,6 +43,12 @@ Run `python tools/package.py` after the release build to create a local portable
 
 The Linux build and rendering are checked here. Windows and macOS source paths and package recipes are provided but require native runners to validate compilation and play. No Windows/Mac release is claimed until that succeeds. Current Windows 11 and both Apple Silicon and Intel Mac targets are included in the native recipe.
 
+## Install in the Linux app launcher
+
+After building, run `python3 tools/install_linux.py` once. Open your app launcher and choose **DX-Ball 4K** to play directly, without a terminal or build step. The installer copies the release executable and icon into your user application directory, requires no administrator access, and leaves saved scores, boards and settings intact. Re-run it after rebuilding to update the installed game. Music tracks decode only when played, rather than delaying startup to prepare every track.
+
+The Linux portable package also includes `Install.py`; run `python3 Install.py` from the extracted folder to install it. The installer respects `XDG_DATA_HOME` and accepts `--data-home` for a custom location. Installed builds contain original assets and remain for private local use.
+
 ## Automated checks
 
 `cargo test` verifies board integrity, rebound numbers, launch input, life loss, speed/paddle bonuses, bullet limits and the scripted core loop.
@@ -53,6 +59,6 @@ The Linux build and rendering are checked here. Windows and macOS source paths a
 
 Recovered: 640x480 arena; 60 Hz integer-frame ball movement; 73-pixel paddle; 9-pixel ball; 3 lives; original 50 layouts; durable, invisible, explosive and metal brick rules; discrete paddle rebound zones; speed range; all bonus effects; bullet scoring and limits; final-brick lightning timer.
 
-Differences: neutral title and modern menu; keyboard alternatives; resize/fullscreen support; a simpler editor and high-score presentation; approximate transition timing, particle trajectories, palette cycling and MIDI instruments. MIDI note events were converted from the original MDS streams and rendered with a portable synthesizer; effects use original WAV audio. Exact oblique collision pixel behavior and live gameplay feel remain unverified because this session cannot run the original. Static evidence does not establish runtime equivalence.
+Differences: procedural glass-and-chrome graphics and modern text replace original bitmap visuals; vector-icon bonus badges; neutral title and modern menu; keyboard alternatives; resize/fullscreen support; a simpler editor and high-score presentation; approximate transition timing, particle trajectories, lighting and MIDI instruments. MIDI note events were converted from the original MDS streams and rendered with a portable synthesizer; effects use original WAV audio. Exact oblique collision pixel behavior and live gameplay feel remain unverified because this session cannot run the original. Static evidence does not establish runtime equivalence.
 
 The vendored miniquad change only prevents automated screenshots/self-tests from activating the window. Its MIT/Apache licenses remain included. `tools/import_assets.py` and `tools/render_music.py` prepare the local assets before the first build. Subsequent builds reuse them. The source repository does not grant redistribution rights to the original game's assets.

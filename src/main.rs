@@ -2,11 +2,13 @@
 mod assets;
 mod game;
 mod verify;
+mod visuals;
 use assets::Assets;
 use game::{Game, Input, Phase};
 use macroquad::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use visuals::{Visuals, ICE, INK};
 
 const VIEW_WIDTH: f32 = 960.;
 const VIEW_HEIGHT: f32 = 540.;
@@ -125,58 +127,148 @@ impl Ui {
         }
     }
 }
+thread_local! {
+    // Fonts belong to the render thread and are loaded once after GL starts.
+    static UI_FONTS: std::cell::RefCell<Option<(Font, Font)>> = const { std::cell::RefCell::new(None) };
+}
+// Drop GPU font atlases with the main future, before miniquad unloads GL.
+// Leaving them in thread-local storage until process exit calls glDeleteTextures
+// after the GL library has gone away.
+struct UiFontGuard;
+impl Drop for UiFontGuard {
+    fn drop(&mut self) {
+        UI_FONTS.with(|fonts| {
+            fonts.borrow_mut().take();
+        });
+    }
+}
+fn with_font<T>(size: f32, draw: impl FnOnce(&Font) -> T) -> T {
+    UI_FONTS.with(|fonts| {
+        let fonts = fonts.borrow();
+        let (regular, bold) = fonts.as_ref().expect("interface fonts initialized");
+        draw(if size >= 24. { bold } else { regular })
+    })
+}
+fn prepare_fonts() {
+    // Growing an atlas while queued labels still refer to its old texture can
+    // leave black glyph rectangles. Allocate the UI sizes before drawing a scene.
+    let characters: Vec<char> = (' '..='~').collect();
+    UI_FONTS.with(|fonts| {
+        let fonts = fonts.borrow();
+        let (regular, bold) = fonts.as_ref().expect("interface fonts initialized");
+        for (font, sizes) in [
+            (
+                regular,
+                &[9., 10., 11., 12., 13., 14., 15., 16., 17., 18.][..],
+            ),
+            (bold, &[25., 27., 28., 29., 32., 35., 42.][..]),
+        ] {
+            for &size in sizes {
+                font.populate_font_cache(
+                    &characters,
+                    (size * RENDER_SCALE * macroquad::miniquad::window::dpi_scale()).ceil() as u16,
+                );
+            }
+            draw_text_ex(
+                "A",
+                -1000.,
+                -1000.,
+                TextParams {
+                    font: Some(font),
+                    font_size: (sizes[0] * RENDER_SCALE) as u16,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+    unsafe {
+        macroquad::window::get_internal_gl().flush();
+    }
+}
 fn text(s: &str, x: f32, y: f32, size: f32, color: Color) {
-    draw_text_ex(
-        s,
-        x,
-        y,
-        TextParams {
-            font_size: (size * RENDER_SCALE) as u16,
-            font_scale: 1. / RENDER_SCALE,
-            color,
-            ..Default::default()
-        },
-    );
+    with_font(size, |font| {
+        draw_text_ex(
+            s,
+            x,
+            y,
+            TextParams {
+                font: Some(font),
+                font_size: (size * RENDER_SCALE) as u16,
+                font_scale: 1. / RENDER_SCALE,
+                color,
+                ..Default::default()
+            },
+        );
+    });
 }
 fn centered(s: &str, y: f32, size: f32, color: Color) {
-    let w = measure_text(s, None, (size * RENDER_SCALE) as u16, 1. / RENDER_SCALE).width;
+    let w = with_font(size, |font| {
+        measure_text(
+            s,
+            Some(font),
+            (size * RENDER_SCALE) as u16,
+            1. / RENDER_SCALE,
+        )
+        .width
+    });
     text(s, (640. - w) / 2., y, size, color);
 }
 const CYAN: Color = Color::new(0.26, 0.92, 0.94, 1.);
-fn button(label: &str, r: Rect, selected: bool) {
-    draw_rectangle(r.x, r.y, r.w, r.h, Color::new(0.025, 0.045, 0.055, 1.));
-    draw_rectangle_lines(
-        r.x,
-        r.y,
-        r.w,
-        r.h,
-        1.,
+fn button(v: &Visuals, label: &str, r: Rect, selected: bool) {
+    v.begin(vec2(320., 120.));
+    v.shadow(r, 7.);
+    v.panel(
+        r,
+        7.,
         if selected {
-            CYAN
+            Color::new(0.06, 0.25, 0.33, 1.)
         } else {
-            Color::new(0.16, 0.24, 0.27, 1.)
+            INK
         },
     );
+    v.end();
     text(
         label,
-        r.x + 14.,
-        r.y + r.h * 0.67,
-        16.,
-        if selected { WHITE } else { GRAY },
+        r.x + 17.,
+        r.y + r.h * 0.66,
+        15.,
+        if selected {
+            WHITE
+        } else {
+            Color::new(0.61, 0.71, 0.8, 1.)
+        },
     );
     if selected {
-        draw_rectangle(r.x, r.y, 3., r.h, CYAN);
+        draw_line(r.x + 5., r.y + 11., r.x + 5., r.y + r.h - 11., 2., ICE);
+        text(">", r.x + r.w - 25., r.y + r.h * 0.66, 16., ICE);
     }
 }
-fn backdrop(a: &Assets) {
-    draw_texture(&a.background, 0., 0., WHITE);
+fn backdrop(v: &Visuals) {
+    v.begin(vec2(320., 100.));
+    v.floor(640., 480.);
+    v.end();
 }
-fn draw_widescreen(g: &Game, a: &Assets, arena: &Texture2D) {
-    let muted = Color::new(0.49, 0.59, 0.64, 1.);
-    let edge = Color::new(0.13, 0.23, 0.27, 1.);
-    clear_background(Color::new(0.025, 0.04, 0.055, 1.));
-    draw_rectangle(12., 18., 664., 504., Color::new(0.04, 0.065, 0.08, 1.));
-    draw_rectangle_lines(12., 18., 664., 504., 1., edge);
+fn draw_widescreen(g: &Game, a: &Assets, arena: &Texture2D, v: &Visuals) {
+    let muted = Color::new(0.49, 0.61, 0.72, 1.);
+    let edge = Color::new(0.15, 0.25, 0.33, 1.);
+    clear_background(Color::new(0.015, 0.022, 0.04, 1.));
+    v.begin(vec2(350., 130.));
+    v.floor(VIEW_WIDTH, VIEW_HEIGHT);
+    v.glow(vec2(380., 0.), 420., Color::new(0.12, 0.46, 0.52, 0.15));
+    v.shadow(Rect::new(14., 20., 660., 500.), 12.);
+    v.panel(Rect::new(14., 20., 660., 500.), 12., INK);
+    v.shadow(Rect::new(688., 20., 258., 500.), 14.);
+    v.panel(
+        Rect::new(688., 20., 258., 500.),
+        14.,
+        Color::new(0.045, 0.065, 0.12, 1.),
+    );
+    v.panel(
+        Rect::new(701., 166., 232., 175.),
+        9.,
+        Color::new(0.065, 0.09, 0.16, 1.),
+    );
+    v.end();
     draw_texture_ex(
         arena,
         ARENA.x,
@@ -188,12 +280,12 @@ fn draw_widescreen(g: &Game, a: &Assets, arena: &Texture2D) {
             ..Default::default()
         },
     );
-    draw_rectangle(700., 30., 28., 3., CYAN);
-    text("BRICK", 700., 75., 34., WHITE);
-    text("BREAKER", 700., 109., 34., WHITE);
-    text("50 BOARDS. ONE MORE TRY.", 700., 136., 12., muted);
-    draw_line(700., 158., 932., 158., 1., edge);
-
+    draw_line(40., 21., 298., 21., 0.7, Color::new(0.4, 0.8, 0.86, 0.6));
+    draw_circle(714., 46., 2.5, ICE);
+    text("THE ARCADE COLLECTION", 726., 50., 9., ICE);
+    text("BRICK", 710., 88., 32., WHITE);
+    text("BREAKER", 710., 119., 32., WHITE);
+    text("50 BOARDS. ONE MORE TRY.", 710., 142., 10., muted);
     let playing = matches!(
         g.phase,
         Phase::Playing
@@ -204,18 +296,31 @@ fn draw_widescreen(g: &Game, a: &Assets, arena: &Texture2D) {
             | Phase::Won
     );
     if playing {
-        text("SCORE", 700., 190., 12., muted);
-        text(&format!("{:06}", g.score), 700., 229., 36., WHITE);
-        text("BOARD", 700., 267., 12., muted);
-        text(&format!("{:02} / 50", g.board + 1), 700., 294., 24., CYAN);
-        text("LIVES", 850., 267., 12., muted);
-        text(&g.lives.max(0).to_string(), 850., 294., 24., WHITE);
+        text("TOTAL SCORE", 716., 189., 10., muted);
+        text(&format!("{:06}", g.score), 714., 227., 35., WHITE);
+        draw_line(716., 242., 918., 242., 0.6, edge);
+        text("BOARD", 716., 264., 10., muted);
+        text(&format!("{:02}", g.board + 1), 716., 292., 25., ICE);
+        text("/ 50", 755., 291., 13., muted);
+        text("LIVES", 851., 264., 10., muted);
+        for i in 0..g.lives.clamp(0, 5) {
+            draw_rectangle(851. + i as f32 * 13., 281., 9., 4., ICE);
+        }
         text(
-            &format!("{} BRICKS LEFT", g.remaining()),
-            700.,
-            328.,
-            13.,
+            &format!("{} BRICKS REMAINING", g.remaining()),
+            716.,
+            317.,
+            10.,
             muted,
+        );
+        draw_line(716., 329., 918., 329., 2., edge);
+        draw_line(
+            716.,
+            329.,
+            716. + 202. * (g.board + 1) as f32 / 50.,
+            329.,
+            2.,
+            ICE,
         );
     } else {
         let (title, lines) = match g.phase {
@@ -252,13 +357,12 @@ fn draw_widescreen(g: &Game, a: &Assets, arena: &Texture2D) {
                 ],
             ),
         };
-        text(title, 700., 200., 19., CYAN);
+        text(title, 716., 197., 17., ICE);
         for (i, line) in lines.iter().enumerate() {
-            text(line, 700., 236. + i as f32 * 25., 15., muted);
+            text(line, 716., 234. + i as f32 * 26., 13., muted);
         }
     }
-    draw_line(700., 356., 932., 356., 1., edge);
-    text("QUICK CONTROLS", 700., 384., 12., muted);
+    text("QUICK CONTROLS", 710., 371., 10., muted);
     let controls = if g.phase == Phase::Editor {
         [
             ("CLICK / RIGHT", "Paint / erase"),
@@ -275,135 +379,127 @@ fn draw_widescreen(g: &Game, a: &Assets, arena: &Texture2D) {
         ]
     };
     for (i, (key, action)) in controls.iter().enumerate() {
-        let y = 413. + i as f32 * 25.;
-        text(key, 700., y, 12., WHITE);
-        text(action, 810., y, 12., muted);
+        let y = 396. + i as f32 * 24.;
+        text(key, 710., y, 10., WHITE);
+        text(action, 817., y, 11., muted);
     }
+    draw_line(710., 485., 924., 485., 0.6, edge);
     text(
         if a.music_on { "MUSIC ON" } else { "MUSIC OFF" },
-        700.,
-        516.,
-        10.,
+        710.,
+        504.,
+        9.,
         muted,
     );
-    text("4K", 908., 516., 10., CYAN);
+    text("4K UHD", 883., 504., 9., ICE);
 }
-fn draw_game(g: &Game, a: &Assets) -> bool {
-    backdrop(a);
-    for (i, &b) in g.bricks.iter().enumerate() {
-        if b == 0 || b == 7 {
-            continue;
-        }
-        let id = match b {
-            1 => 3,
-            2 => 4,
-            3 => 5,
-            4 => 6,
-            5 => 7,
-            6 => 8,
-            8 => 9,
-            9..=17 => b as u32 + 1,
-            18..=22 => b as u32 + 38,
-            _ => 3,
-        };
-        let p = Game::cell_pos(i);
-        a.game.sprite(id, p.x, p.y);
-    }
-    for e in &g.bursts {
-        if e.sprite == 145 {
-            let id = 145 + (e.age / 2).min(21);
-            a.game.sprite(id, e.p.x - 20., e.p.y - 25.);
-        } else if e.age < 12 {
-            a.game.sprite(e.sprite + (e.age / 4).min(2), e.p.x, e.p.y);
-        }
-    }
-    for b in &g.bonuses {
-        let id = if b.kind == 15 {
-            50
-        } else if b.kind == 16 {
-            51
-        } else if b.kind == 17 {
-            52
-        } else if b.kind == 18 {
-            53
-        } else {
-            35 + b.kind as u32
-        };
-        a.game.sprite(id, b.p.x, b.p.y);
-    }
-    for b in &g.balls {
-        a.game.sprite(b.sprite, b.p.x, b.p.y);
-    }
-    for p in &g.bullets {
-        a.game.sprite(32, p.x, p.y);
-    }
-    if !matches!(g.phase, Phase::Lost | Phase::GameOver) {
-        let n = (g.width / 73.) as u32;
-        let frame = (g.ticks / 4 % 4) as u32;
-        let base = if g.shooting {
-            104
-        } else if g.balls.iter().any(|b| b.held) {
-            84
-        } else {
-            64
-        };
-        let id = base + n * 4 + frame;
-        let h = if g.shooting { 29. } else { 14. };
-        a.game.sprite(id, g.paddle - g.width / 2., 450. - (h - 14.));
-    }
-    a.large_text(&g.score.to_string(), 30., 0., 1.);
+fn draw_game(g: &Game, v: &Visuals) -> bool {
+    v.game(g);
+    let muted = Color::new(0.45, 0.58, 0.68, 1.);
+    text(&format!("{:06}", g.score), 25., 24., 17., WHITE);
+    text(
+        &format!("BOARD {:02} / 50", g.board + 1),
+        270.,
+        24.,
+        11.,
+        ICE,
+    );
     for i in 0..(g.lives - 1).clamp(0, 19) {
-        a.game
-            .sprite(31, 598. - (i % 10) as f32 * 22., 2. + (i / 10) as f32 * 8.);
-    }
-    // A small board readout and discoverable controls are additions outside the brick field.
-    a.small_text(&format!("BOARD {:02} / 50", g.board + 1), 280., 12., 1.);
-    a.small_text("F1 HELP   P PAUSE   ESC MENU", 24., 470., 1.);
-    if g.message_time > 0 {
-        centered(&g.message, 404., 16., CYAN);
-    }
-    if g.balls.iter().any(|b| b.held) && g.message_time == 0 {
-        centered(
-            "CLICK TO RELEASE",
-            415.,
-            13.,
-            Color::new(0.5, 0.57, 0.6, 1.),
+        draw_rectangle(
+            603. - (i % 10) as f32 * 13.,
+            14. + (i / 10) as f32 * 6.,
+            9.,
+            3.,
+            ICE,
         );
     }
+    for (i, &b) in g.bricks.iter().enumerate() {
+        let p = Game::cell_pos(i);
+        if b == 2 || b == 21 {
+            draw_line(p.x + 11., p.y + 6., p.x + 19., p.y + 6., 0.7, WHITE);
+            draw_line(p.x + 11., p.y + 9., p.x + 19., p.y + 9., 0.7, WHITE);
+        } else if b == 3 || b == 4 {
+            for n in 0..if b == 3 { 3 } else { 2 } {
+                draw_circle(p.x + 12. + n as f32 * 3., p.y + 8., 0.7, WHITE);
+            }
+        } else if b == 8 {
+            // A small ember identifies explosive bricks without covering their color.
+            draw_poly(
+                p.x + 15.,
+                p.y + 7.5,
+                4,
+                2.,
+                0.,
+                Color::new(1., 0.91, 0.62, 1.),
+            );
+        }
+    }
+    text("F1  GUIDE", 25., 474., 9., muted);
+    text("P  PAUSE", 280., 474., 9., muted);
+    text("ESC  MENU", 558., 474., 9., muted);
+    if g.message_time > 0 {
+        centered(&g.message, 404., 14., ICE);
+    }
+    if g.balls.iter().any(|b| b.held) && g.message_time == 0 {
+        centered("CLICK TO RELEASE", 415., 12., muted);
+    }
     if g.phase == Phase::Paused {
-        draw_rectangle(180., 207., 280., 62., Color::new(0., 0., 0., 0.88));
-        a.large_text("PAUSED", 221., 220., 0.8);
-        centered("P OR RIGHT CLICK TO CONTINUE", 292., 13., GRAY);
+        v.begin(vec2(320., 220.));
+        v.shadow(Rect::new(164., 190., 312., 112.), 12.);
+        v.panel(
+            Rect::new(164., 190., 312., 112.),
+            12.,
+            Color::new(0.035, 0.07, 0.11, 0.98),
+        );
+        v.end();
+        centered("PAUSED", 237., 28., WHITE);
+        centered("P OR RIGHT CLICK TO CONTINUE", 275., 12., ICE);
     }
     if matches!(g.phase, Phase::GameOver | Phase::Won) {
-        draw_rectangle(120., 185., 400., 117., Color::new(0., 0., 0., 0.9));
+        v.begin(vec2(320., 220.));
+        v.shadow(Rect::new(112., 181., 416., 130.), 12.);
+        v.panel(
+            Rect::new(112., 181., 416., 130.),
+            12.,
+            Color::new(0.035, 0.07, 0.11, 0.98),
+        );
+        v.end();
         centered(
             if g.phase == Phase::Won {
                 "ALL 50 BOARDS CLEARED"
             } else {
                 "GAME OVER"
             },
-            226.,
-            26.,
+            225.,
+            25.,
             WHITE,
         );
-        centered(&format!("FINAL SCORE  {}", g.score), 254., 18., CYAN);
-        centered("CLICK TO RETURN TO MENU", 282., 13., GRAY);
+        centered(&format!("FINAL SCORE  {}", g.score), 258., 18., ICE);
+        centered("CLICK TO RETURN TO MENU", 290., 12., muted);
     }
     true
 }
-fn draw_menu(g: &Game, a: &Assets, ui: &Ui, _mouse: Vec2) {
-    backdrop(a);
-    for y in 0..4 {
-        for x in 0..14 {
-            let id = [3, 14, 11, 10][y];
-            a.game
-                .sprite(id, 110. + x as f32 * 30., 38. + y as f32 * 15.);
+fn draw_menu(v: &Visuals, a: &Assets, ui: &Ui) {
+    backdrop(v);
+    v.begin(vec2(320., 90.));
+    v.glow(vec2(320., 80.), 250., Color::new(0.2, 0.7, 0.8, 0.18));
+    for row in 0..3 {
+        for x in 0..(12 - row * 2) {
+            let r = Rect::new(
+                137. + row as f32 * 31. + x as f32 * 31.,
+                18. + row as f32 * 16.,
+                30.,
+                15.,
+            );
+            v.shadow(r, 1.8);
+            v.brick([1, 9, 10, 11, 12, 1][(x + row) % 6], r);
         }
     }
-    draw_rectangle(106., 34., 428., 69., Color::new(0., 0., 0., 0.68));
-    a.large_text("BRICK BREAKER", 139., 49., 0.93);
-    centered("A CLASSIC PADDLE & BRICK GAME", 126., 13., CYAN);
+    v.paddle(320., 366., 90., false, false);
+    v.ball(vec2(315.5, 346.), 9., false);
+    v.end();
+    centered("BRICK BREAKER", 101., 42., WHITE);
+    centered("FIND YOUR FLOW. CLEAR ALL 50.", 128., 11., ICE);
     let options = [
         "PLAY GAME",
         "BONUSES & CONTROLS",
@@ -411,13 +507,20 @@ fn draw_menu(g: &Game, a: &Assets, ui: &Ui, _mouse: Vec2) {
         "BOARD WORKSHOP",
     ];
     for (i, label) in options.iter().enumerate() {
-        let r = Rect::new(191., 158. + i as f32 * 44., 258., 34.);
-        button(label, r, ui.selected == i);
+        button(
+            v,
+            label,
+            Rect::new(191., 158. + i as f32 * 44., 258., 34.),
+            ui.selected == i,
+        );
     }
-    a.game.sprite(68, 283., 366.);
-    a.game.sprite(1, 315., 351.);
-    centered("MOVE THE MOUSE  /  CLICK TO LAUNCH", 414., 14., WHITE);
-    centered("BLUE: GOOD   RED: DANGER   GREY: MIXED", 436., 12., GRAY);
+    centered("MOVE THE MOUSE  /  CLICK TO LAUNCH", 414., 13., WHITE);
+    centered(
+        "BLUE: GOOD   RED: DANGER   GREY: MIXED",
+        437.,
+        10.,
+        Color::new(0.48, 0.61, 0.72, 1.),
+    );
     centered(
         &format!(
             "M  MUSIC {}     S  SOUND {}     F11  FULLSCREEN",
@@ -425,84 +528,125 @@ fn draw_menu(g: &Game, a: &Assets, ui: &Ui, _mouse: Vec2) {
             if a.sound_on { "ON" } else { "OFF" }
         ),
         462.,
-        11.,
+        10.,
         GRAY,
     );
-    let _ = g;
 }
-fn draw_help(a: &Assets) {
-    draw_texture(&a.help, 0., 0., WHITE);
-    // Finish the opaque reference layer before drawing its text overlays.
-    unsafe {
-        macroquad::window::get_internal_gl().flush();
-    }
-    a.large_text("BONUSES", 204., 48., 0.95);
+fn draw_help(v: &Visuals) {
+    backdrop(v);
+    centered("BONUSES & CONTROLS", 43., 27., WHITE);
+    centered("MOUSE: MOVE   CLICK / SPACE: LAUNCH OR FIRE", 72., 12., ICE);
     centered(
-        "KEEP EVERY BALL IN PLAY. CLEAR THE BOARD.",
-        148.,
-        16.,
-        WHITE,
+        "P / RIGHT CLICK: PAUSE   M: MUSIC   N: TRACK   S: SOUND",
+        94.,
+        10.,
+        GRAY,
     );
-    centered("MOUSE: MOVE     LEFT CLICK: LAUNCH / FIRE", 179., 14., CYAN);
-    centered("RIGHT CLICK OR P: PAUSE     ESC: BACK", 200., 14., GRAY);
-    centered("M: MUSIC     N: NEXT TRACK     S: SOUND", 222., 13., GRAY);
-    text("SPACE AND ARROWS ALSO WORK", 34., 247., 11., GRAY);
-    text("CLICK ANYWHERE TO RETURN", 400., 472., 12., WHITE);
+    centered("BLUE: GOOD   RED: DANGER   GREY: MIXED", 118., 10., GRAY);
+    v.begin(vec2(320., 100.));
+    for k in 0..19 {
+        let x = 26. + (k / 10) as f32 * 304.;
+        let y = 140. + (k % 10) as f32 * 28.;
+        v.panel(Rect::new(x, y, 288., 24.), 4., INK);
+        v.bonus(k, Rect::new(x + 3., y + 1., 30., 22.));
+    }
+    v.end();
+    for k in 0..game::BONUS_NAMES.len() {
+        let x = 26. + (k / 10) as f32 * 304.;
+        let y = 140. + (k % 10) as f32 * 28.;
+        Visuals::bonus_icon(k, Rect::new(x + 3., y + 1., 30., 22.));
+    }
+    for (k, label) in game::BONUS_NAMES.iter().enumerate() {
+        let x = 26. + (k / 10) as f32 * 304.;
+        let y = 140. + (k % 10) as f32 * 28.;
+        text(label, x + 40., y + 16., 11., WHITE);
+    }
+    centered(
+        "ARROW KEYS ALSO STEER  /  CLICK ANYWHERE TO RETURN",
+        461.,
+        11.,
+        ICE,
+    );
 }
-fn draw_scores(a: &Assets, ui: &Ui) {
-    backdrop(a);
-    a.large_text("HIGH SCORES", 170., 72., 0.85);
+fn draw_scores(v: &Visuals, ui: &Ui) {
+    backdrop(v);
+    centered("YOUR BEST RUNS", 65., 29., WHITE);
+    centered("EVERY BRICK COUNTS", 94., 11., ICE);
+    v.begin(vec2(320., 120.));
     for i in 0..8 {
-        let score = ui.saved.scores.get(i).copied().unwrap_or(0);
-        a.small_text(
-            &format!("{:02}       {:09}", i + 1, score),
-            219.,
-            145. + i as f32 * 29.,
-            2.,
+        v.panel(Rect::new(166., 120. + i as f32 * 35., 308., 29.), 5., INK);
+    }
+    v.end();
+    for i in 0..8 {
+        text(
+            &format!("{:02}", i + 1),
+            183.,
+            140. + i as f32 * 35.,
+            12.,
+            ICE,
+        );
+        text(
+            &format!("{:09}", ui.saved.scores.get(i).copied().unwrap_or(0)),
+            328.,
+            140. + i as f32 * 35.,
+            17.,
+            WHITE,
         );
     }
-    centered("CLICK TO RETURN", 448., 14., CYAN);
+    centered("CLICK TO RETURN", 448., 12., ICE);
 }
-fn draw_editor(a: &Assets, ui: &Ui) {
-    backdrop(a);
+fn draw_editor(v: &Visuals, ui: &Ui) {
+    backdrop(v);
     centered(
         &format!("BOARD WORKSHOP  {:02} / 50", ui.editor_board + 1),
         25.,
         18.,
-        CYAN,
+        ICE,
     );
+    v.begin(vec2(320., 200.));
     for (i, &b) in ui.editor.iter().enumerate() {
         let p = Game::cell_pos(i);
-        if b > 0 {
-            let id = match b {
-                1..=7 => b as u32 + 2,
-                8 => 9,
-                9..=17 => b as u32 + 1,
-                18..=22 => b as u32 + 38,
-                _ => 3,
-            };
-            a.game.sprite(id, p.x, p.y);
-        } else {
-            draw_rectangle_lines(p.x, p.y, 30., 15., 0.4, Color::new(0.09, 0.12, 0.13, 1.));
+        if b > 0 && b != 7 {
+            v.brick(b, Rect::new(p.x, p.y, 30., 15.));
+        }
+    }
+    for i in 1..23 {
+        v.brick(i as u8, Rect::new(32. + i as f32 * 25., 370., 24., 15.));
+    }
+    v.end();
+    for (i, &b) in ui.editor.iter().enumerate() {
+        let p = Game::cell_pos(i);
+        if b == 0 || b == 7 {
+            draw_rectangle_lines(
+                p.x,
+                p.y,
+                30.,
+                15.,
+                0.4,
+                if b == 7 {
+                    ICE
+                } else {
+                    Color::new(0.12, 0.2, 0.25, 1.)
+                },
+            );
+        }
+        if b == 7 {
+            text("?", p.x + 12., p.y + 11., 10., ICE);
         }
     }
     for i in 0..23 {
         let r = Rect::new(32. + i as f32 * 25., 370., 24., 22.);
         if i == ui.editor_kind as usize {
-            draw_rectangle_lines(r.x - 1., r.y - 1., r.w + 2., r.h + 2., 1., CYAN);
+            draw_rectangle_lines(r.x - 1., r.y - 1., r.w + 2., r.h + 2., 1., ICE);
         }
-        if i > 0 {
-            let b = i as u8;
-            let id = match b {
-                1..=7 => b as u32 + 2,
-                8 => 9,
-                9..=17 => b as u32 + 1,
-                18..=22 => b as u32 + 38,
-                _ => 3,
-            };
-            a.game.sized(id, r.x, r.y, 24., 15.);
-        } else {
-            text("X", r.x + 7., r.y + 14., 14., GRAY);
+        if i == 0 || i == 7 {
+            text(
+                if i == 0 { "X" } else { "?" },
+                r.x + 7.,
+                r.y + 12.,
+                12.,
+                ICE,
+            );
         }
     }
     centered(
@@ -538,12 +682,23 @@ async fn main() {
     let self_test = arg_value("--self-test");
     let quiet = automated();
     let mut a = Assets::new(quiet).await;
+    UI_FONTS.with(|fonts| {
+        *fonts.borrow_mut() = Some((
+            load_ttf_font_from_bytes(include_bytes!("../resources/fonts/DejaVuSans.ttf"))
+                .expect("regular interface font"),
+            load_ttf_font_from_bytes(include_bytes!("../resources/fonts/DejaVuSans-Bold.ttf"))
+                .expect("bold interface font"),
+        ));
+    });
+    let _font_guard = UiFontGuard;
+    prepare_fonts();
+    let visuals = Visuals::new();
     let mut g = Game::new();
     let mut ui = Ui::new(quiet);
     if !quiet {
         a.sound_on = ui.saved.sound;
         if ui.saved.music {
-            a.toggle_music();
+            a.toggle_music().await;
         }
     }
     let target = render_target(
@@ -589,10 +744,10 @@ async fn main() {
                 a.sound_on = !a.sound_on;
             }
             if is_key_pressed(KeyCode::M) {
-                a.toggle_music();
+                a.toggle_music().await;
             }
             if is_key_pressed(KeyCode::N) {
-                a.next_music();
+                a.next_music().await;
             }
             if is_key_pressed(KeyCode::Escape) {
                 match g.phase {
@@ -769,17 +924,17 @@ async fn main() {
         });
         clear_background(BLACK);
         match g.phase {
-            Phase::Menu => draw_menu(&g, &a, &ui, mouse),
-            Phase::Help => draw_help(&a),
-            Phase::Scores => draw_scores(&a, &ui),
+            Phase::Menu => draw_menu(&visuals, &a, &ui),
+            Phase::Help => draw_help(&visuals),
+            Phase::Scores => draw_scores(&visuals, &ui),
             Phase::Editor => {
-                draw_editor(&a, &ui);
+                draw_editor(&visuals, &ui);
                 if g.message_time > 0 {
                     centered(&g.message, 360., 14., CYAN);
                 }
             }
             _ => {
-                hud_drawn |= draw_game(&g, &a);
+                hud_drawn |= draw_game(&g, &visuals);
             }
         }
         show_mouse(g.phase != Phase::Playing || quiet);
@@ -787,7 +942,7 @@ async fn main() {
             render_target: Some(widescreen.clone()),
             ..Camera2D::from_display_rect(Rect::new(0., 0., VIEW_WIDTH, VIEW_HEIGHT))
         });
-        draw_widescreen(&g, &a, &target.texture);
+        draw_widescreen(&g, &a, &target.texture, &visuals);
         set_default_camera();
         clear_background(Color::new(0.012, 0.014, 0.019, 1.));
         draw_texture_ex(

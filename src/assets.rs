@@ -1,55 +1,21 @@
-use macroquad::{
-    audio::{load_sound_from_bytes, play_sound, stop_sound, PlaySoundParams, Sound},
-    prelude::*,
-};
+use macroquad::audio::{load_sound_from_bytes, play_sound, stop_sound, PlaySoundParams, Sound};
 use std::collections::HashMap;
 
-pub struct Atlas {
-    pub texture: Texture2D,
-    pub rects: HashMap<u32, Vec<f32>>,
-}
-impl Atlas {
-    fn new(png: &[u8], json: &str) -> Self {
-        let texture = Texture2D::from_file_with_format(png, Some(ImageFormat::Png));
-        texture.set_filter(FilterMode::Nearest);
-        Self {
-            texture,
-            rects: serde_json::from_str(json).unwrap(),
-        }
-    }
-    pub fn sprite(&self, id: u32, x: f32, y: f32) {
-        if let Some(r) = self.rects.get(&id) {
-            self.sized(id, x, y, r[2], r[3]);
-        }
-    }
-    pub fn sized(&self, id: u32, x: f32, y: f32, w: f32, h: f32) {
-        if let Some(r) = self.rects.get(&id) {
-            draw_texture_ex(
-                &self.texture,
-                x.round(),
-                y.round(),
-                WHITE,
-                DrawTextureParams {
-                    source: Some(Rect::new(r[0], r[1], r[2], r[3])),
-                    dest_size: Some(vec2(w, h)),
-                    ..Default::default()
-                },
-            );
-        }
-    }
-}
 pub struct Assets {
-    pub game: Atlas,
-    pub font: Atlas,
-    pub small: Atlas,
-    pub background: Texture2D,
-    pub help: Texture2D,
     pub sounds: HashMap<usize, Sound>,
-    pub music: Vec<Sound>,
+    pub music: Vec<Option<Sound>>,
     pub sound_on: bool,
     pub music_on: bool,
     pub track: usize,
 }
+const MUSIC: [&[u8]; 6] = [
+    include_bytes!("../assets/freebee.ogg"),
+    include_bytes!("../assets/12flight.ogg"),
+    include_bytes!("../assets/acker-gs.ogg"),
+    include_bytes!("../assets/brain.ogg"),
+    include_bytes!("../assets/ethno_pa.ogg"),
+    include_bytes!("../assets/gmfigaro.ogg"),
+];
 macro_rules! wav {
     ($p:literal) => {
         include_bytes!(concat!("../assets/", $p, ".wav")) as &[u8]
@@ -93,46 +59,9 @@ impl Assets {
                 }
             }
         }
-        let mut music = vec![];
-        if !quiet {
-            for bytes in [
-                include_bytes!("../assets/freebee.ogg") as &[u8],
-                include_bytes!("../assets/12flight.ogg"),
-                include_bytes!("../assets/acker-gs.ogg"),
-                include_bytes!("../assets/brain.ogg"),
-                include_bytes!("../assets/ethno_pa.ogg"),
-                include_bytes!("../assets/gmfigaro.ogg"),
-            ] {
-                if let Ok(s) = load_sound_from_bytes(bytes).await {
-                    music.push(s);
-                }
-            }
-        }
-        let background = Texture2D::from_file_with_format(
-            include_bytes!("../assets/mbbkgrnd.png"),
-            Some(ImageFormat::Png),
-        );
-        background.set_filter(FilterMode::Nearest);
-        let help = Texture2D::from_file_with_format(
-            include_bytes!("../assets/mainmenu.png"),
-            Some(ImageFormat::Png),
-        );
-        help.set_filter(FilterMode::Nearest);
+        // Decode a track only when it is played, instead of all six at startup.
+        let music = (0..MUSIC.len()).map(|_| None).collect();
         Self {
-            game: Atlas::new(
-                include_bytes!("../assets/mball2.png"),
-                include_str!("../assets/mball2.json"),
-            ),
-            font: Atlas::new(
-                include_bytes!("../assets/thefont.png"),
-                include_str!("../assets/thefont.json"),
-            ),
-            small: Atlas::new(
-                include_bytes!("../assets/sfont.png"),
-                include_str!("../assets/sfont.json"),
-            ),
-            background,
-            help,
             sounds,
             music,
             sound_on: !quiet,
@@ -153,20 +82,23 @@ impl Assets {
             }
         }
     }
-    pub fn toggle_music(&mut self) {
+    pub async fn toggle_music(&mut self) {
         self.music_on = !self.music_on;
-        self.update_music();
+        self.update_music().await;
     }
-    pub fn next_music(&mut self) {
-        self.track = (self.track + 1) % self.music.len().max(1);
-        self.update_music();
+    pub async fn next_music(&mut self) {
+        self.track = (self.track + 1) % MUSIC.len();
+        self.update_music().await;
     }
-    fn update_music(&self) {
-        for s in &self.music {
+    async fn update_music(&mut self) {
+        for s in self.music.iter().flatten() {
             stop_sound(s);
         }
         if self.music_on {
-            if let Some(s) = self.music.get(self.track) {
+            if self.music[self.track].is_none() {
+                self.music[self.track] = load_sound_from_bytes(MUSIC[self.track]).await.ok();
+            }
+            if let Some(s) = &self.music[self.track] {
                 play_sound(
                     s,
                     PlaySoundParams {
@@ -174,41 +106,6 @@ impl Assets {
                         volume: 0.35,
                     },
                 );
-            }
-        }
-    }
-    pub fn small_text(&self, s: &str, x: f32, y: f32, scale: f32) {
-        let mut x = x;
-        for c in s.to_uppercase().chars() {
-            let id = c as u32 - 31;
-            if let Some(r) = self.small.rects.get(&id) {
-                let offset = r[5] as u32 as i32;
-                self.small.sized(
-                    id,
-                    x,
-                    y + (7. - r[3] - offset as f32) * scale,
-                    r[2] * scale,
-                    r[3] * scale,
-                );
-                x += (r[2] + 1.) * scale;
-            } else {
-                x += 4. * scale;
-            }
-        }
-    }
-    pub fn large_text(&self, s: &str, x: f32, y: f32, scale: f32) {
-        let mut x = x;
-        for c in s.to_uppercase().chars() {
-            if let Some((&id, r)) = self
-                .font
-                .rects
-                .iter()
-                .find(|(_, r)| r[4] as u32 == c as u32)
-            {
-                self.font.sized(id, x, y, r[2] * scale, r[3] * scale);
-                x += (r[2] + 2.) * scale;
-            } else {
-                x += 12. * scale;
             }
         }
     }

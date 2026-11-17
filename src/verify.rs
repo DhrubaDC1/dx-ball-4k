@@ -57,7 +57,7 @@ impl Probe {
         json!({"version":1,"steps":[
   {"step":"move","passed":self.max_x-self.min_x>80.,"detail":format!("Scripted mouse moved paddle over {:0.0} pixels; ball traveled {:0.0} pixels",self.max_x-self.min_x,self.ball_travel)},
   {"step":"act","passed":g.launches>0&&g.hit_count>0&&g.score>self.start_score,"detail":format!("Left-click launched {} balls; {} brick hits, {} paddle rebounds, score {}",g.launches,g.hit_count,g.rebounds,g.score)},
-  {"step":"hud","passed":hud,"detail":format!("Rendered original bitmap score {}, {} reserve paddle icons and board {} during actual play",g.score,(g.lives-1).max(0),g.board+1)}],"simulation_frames":self.frame,"original_runtime_compared":false})
+  {"step":"hud","passed":hud,"detail":format!("Rendered glass HUD score {}, {} reserve life indicators and board {} during actual play",g.score,(g.lives-1).max(0),g.board+1)}],"simulation_frames":self.frame,"original_runtime_compared":false})
     }
 }
 
